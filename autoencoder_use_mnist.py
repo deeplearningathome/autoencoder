@@ -37,7 +37,7 @@ flags.DEFINE_integer("batch_size", 128, "batch size")
 flags.DEFINE_integer("num_epochs", 60, "number of epochs")
 flags.DEFINE_integer("eval_every_step", 2000, "evaluate every x steps")
 flags.DEFINE_string("acitivation_kind", "sigmoid", "type of neuron activations")
-flags.DEFINE_string("learning_rate", 0.1, "learning rate")
+flags.DEFINE_float("learning_rate", 0.1, "learning rate")
 flags.DEFINE_string("optimizer_kind", "rmsprop", "type of oprtimizer")
 flags.DEFINE_string("logdir", "tblogs", "tensorboard logs")
 FLAGS = flags.FLAGS
