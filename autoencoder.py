@@ -62,7 +62,7 @@ class AutoEncoder(object):
             else:
                 self._e = self.encode(tf.nn.dropout(self._x, 1 - noise))
             self._z = self.decode(self._e)
-            self._loss = tf.sqrt(tf.reduce_mean(tf.square(tf.sub(self._x, self._z))))
+            self._loss = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(self._x, self._z))))
         if is_training:
             if optimizer_kind.lower() == "momentumoptimizer":
                 optimizer = tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9)
