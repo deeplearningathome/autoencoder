@@ -27,17 +27,18 @@ class AutoEncoder(object):
     """
     Simple de-noising autoencoder
     """
-    def __init__(self, layers, noise, is_training, activation='sigmoid', optimizer_kind='rmsprop', lr=0.01):
+    def __init__(self, input, layers, noise, is_training, activation='sigmoid', optimizer_kind='rmsprop', lr=0.01, global_step=None):
         """
         Layers should define encoder topology. Decoder's topology is inferred from that.abs
         First number in layers should be feature size. Last number - size of encoding
         """
+        self._global_step = global_step
         self._activation = activation
         layers_arr = [int(layer) for layer in layers.split(',')]
         assert len(layers_arr) >= 2
         self._feature_size = layers_arr[0]
         self._encoding_size = layers_arr[-1]
-        self._x = tf.placeholder(tf.float32, name='x', shape=[None, self._feature_size])
+        self._x = input#tf.placeholder(tf.float32, name='x', shape=[None, self._feature_size])
         #create encoder
         self._encoding_matrices = []
         self._encoding_biases = []
@@ -67,36 +68,38 @@ class AutoEncoder(object):
             if optimizer_kind.lower() == "momentumoptimizer":
                 optimizer = tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9)
             elif optimizer_kind == "adamoptimizer":
-                optimizer = tf.train.AdamOptimizer(learning_rate=lr)
+                optimizer = tf.train.AdamOptimizer()
             elif optimizer_kind == "adagradoptimizer":
                 optimizer = tf.train.AdagradOptimizer(learning_rate=lr)
             else:
                 optimizer = tf.train.RMSPropOptimizer(learning_rate=lr)
-            self._train_op = optimizer.minimize(self.loss)
+            self._train_op = optimizer.minimize(self.loss, global_step=global_step)
 
     def encode(self, x):
-        inpt = x
-        for i in range(0, len(self._encoding_matrices)):
-            W = self._encoding_matrices[i]
-            b = self._encoding_biases[i]
-            logits = tf.nn.bias_add(tf.matmul(inpt, W), b)
-            if self._activation == "relu":
-                inpt = tf.nn.relu(logits, name="Embeddings")
-            else:
-                inpt = tf.sigmoid(logits, name="Embeddings")
-        return inpt
+        with tf.name_scope("ConstrainedAutoEncoder_Encoder"):
+            inpt = x
+            for i in range(0, len(self._encoding_matrices)):
+                W = self._encoding_matrices[i]
+                b = self._encoding_biases[i]
+                logits = tf.nn.bias_add(tf.matmul(inpt, W), b)
+                if self._activation == "relu":
+                    inpt = tf.nn.relu(logits, name="Embeddings")
+                else:
+                    inpt = tf.sigmoid(logits, name="Embeddings")
+            return inpt
 
     def decode(self, encoding):
-        inpt = encoding
-        for i in range(len(self._encoding_matrices)-1, -1, -1):
-            Wd = tf.transpose(self._encoding_matrices[i])
-            bd = self._decoding_biases[i]
-            logits = tf.nn.bias_add(tf.matmul(inpt, Wd), bd)
-            if self._activation == "relu":
-                inpt = tf.nn.relu(logits)
-            else:
-                inpt = tf.sigmoid(logits)
-        return inpt
+        with tf.name_scope("ConstrainedAutoEncoder_Decoder"):
+            inpt = encoding
+            for i in range(len(self._encoding_matrices)-1, -1, -1):
+                Wd = tf.transpose(self._encoding_matrices[i])
+                bd = self._decoding_biases[i]
+                logits = tf.nn.bias_add(tf.matmul(inpt, Wd), bd)
+                if self._activation == "relu":
+                    inpt = tf.nn.relu(logits)
+                else:
+                    inpt = tf.sigmoid(logits)
+            return inpt
 
     @property
     def encoding(self):
@@ -106,7 +109,7 @@ class AutoEncoder(object):
     def reconstruction(self):
         return self._z
 
-    @property
+    #@property
     def x(self):
         return self._x
 
@@ -118,6 +121,7 @@ class AutoEncoder(object):
     def loss(self):
         return self._loss
 
-    @property
-    def train_op(self):
+    def train_op(self, global_step=None):
+        if global_step:
+            self._global_step = global_step
         return self._train_op
